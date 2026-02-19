@@ -147,4 +147,4 @@ claude-tmux/
 
 ## License
 
-Copyright hexul. All rights reserved.
+MIT License. See [LICENSE](LICENSE).

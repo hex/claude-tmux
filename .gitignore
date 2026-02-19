@@ -1,2 +1,11 @@
-.claude/*.local.md
+# Local plugin overrides and caches
+.claude/
+
+# Claude sessions tooling
 .cs/
+
+# OS and editor
+.DS_Store
+*.swp
+*.swo
+*~
