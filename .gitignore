@@ -1,6 +1,9 @@
 # Local plugin overrides and caches
 .claude/
 
+# User-specific host config
+remote-hosts.json
+
 # Claude sessions tooling
 .cs/
 
