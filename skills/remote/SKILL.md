@@ -1,6 +1,6 @@
 ---
 name: Remote SSH via tmux
-description: This skill should be used when the user asks to "run commands on a remote pane", "check remote pane output", "capture output from remote", "send commands to remote server", "tail logs on prod", "check disk space on staging", "run uptime across servers", "is my SSH connection alive", "read what's on the remote pane", or needs to interact with already-established SSH connections in tmux panes. Not for creating new connections (use the /remote command for that).
+description: This skill should be used when the user asks to "run commands on a remote pane", "check remote pane output", "capture output from remote", "send commands to remote server", "tail logs on prod", "check disk space on staging", "run uptime across servers", "is my SSH connection alive", "read what's on the remote pane", or needs to interact with already-established SSH connections in tmux panes. Also activates when you are about to suggest the user manually SSH into a remote host to run a command, when a command needs to run on a remote machine, when troubleshooting requires executing something on a known remote host, or when you would otherwise tell the user to "run this on the server" or "SSH in and do X". Not for creating new connections (use the /remote command for that).
 version: 2026.2.0
 ---
 <!-- ABOUTME: Skill definition for interacting with remote hosts via SSH-over-tmux. -->
@@ -13,6 +13,61 @@ version: 2026.2.0
 The claude-tmux plugin manages SSH connections via tmux panes. This skill documents patterns for interacting with those connections. Each remote connection lives in a dedicated tmux pane, tagged with a custom `@remote` option set to the connection name (e.g., `mac-mini`, `prod-web`). The `/remote` command handles establishing connections; this skill covers the patterns for interacting with those connections once established.
 
 All remote interaction follows a consistent model: find the target pane by its `@remote` tag, send commands using `tmux send-keys`, and read output using `tmux capture-pane`.
+
+## Proactive Remote Execution
+
+**When you determine that a command needs to run on a remote host -- instead of telling the user to SSH in and run it manually -- check for an active remote pane first.**
+
+### Detection
+
+Before suggesting manual SSH commands, check if a remote pane is connected to the target host:
+
+```bash
+for pane_id in $(tmux list-panes -a -F '#{pane_id}'); do
+  name=$(tmux show-options -p -t "$pane_id" -v @remote 2>/dev/null) && [ -n "$name" ] && echo "$pane_id $name"
+done
+```
+
+Also check saved hosts to see if the target machine has a known entry:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/hosts.sh ${CLAUDE_PLUGIN_ROOT}/remote-hosts.json list
+```
+
+### Offering Remote Execution
+
+If an active pane exists for the target host, use **AskUserQuestion** to offer running the command through it:
+
+- Question: "This command needs to run on `<host>`. Want me to run it through the remote pane, or would you prefer to do it manually?"
+- Header: "Remote exec"
+- Options:
+  - **Run via remote pane** -- "Send the command through the connected tmux pane"
+  - **Show command only** -- "Display the command for manual execution"
+
+If no pane is connected but the host is saved, offer to connect first:
+
+- Question: "This command needs to run on `<host>`. Want me to connect and run it?"
+- Header: "Remote exec"
+- Options:
+  - **Connect and run** -- "Open a remote pane to `<host>` and send the command"
+  - **Show command only** -- "Display the command for manual execution"
+
+### Commands Requiring sudo or TTY
+
+tmux panes have a real TTY, so sudo and interactive commands work through them. For sudo commands, send the command normally -- the remote pane's TTY handles password prompts. Use prompt detection (not marker polling) to wait for sudo's password prompt or completion:
+
+```bash
+tmux send-keys -t "$PANE" "sudo systemctl restart nginx" Enter
+```
+
+After sending a sudo command, capture the pane output to check whether it's waiting for a password. If it is, inform the user so they can type the password in the pane directly.
+
+### When NOT to Offer
+
+Do not offer remote execution when:
+- The user explicitly asked for the command text (e.g., "what command would I run to...")
+- The command involves sensitive credentials that shouldn't pass through send-keys
+- There is no tmux session available (`$TMUX` is unset)
 
 ## Sending Commands to Remote Panes
 
