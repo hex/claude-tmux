@@ -79,31 +79,79 @@ if [[ -z "$HOST" || "$HOST" = "null" || -z "$USER" || "$USER" = "null" ]]; then
     exit 1
 fi
 
-# Build connection command, preferring et (Eternal Terminal) over ssh
-if command -v et &>/dev/null; then
-    CONN_CMD="et"
-    [[ -n "$PORT" ]] && CONN_CMD="$CONN_CMD --port $PORT"
-    [[ -n "$REMOTE_CMD" ]] && CONN_CMD="$CONN_CMD -c \"${REMOTE_CMD}\""
-    CONN_CMD="$CONN_CMD ${USER}@${HOST}"
-    CONN_TYPE="et"
-else
-    CONN_CMD="ssh -t"
-    [[ -n "$PORT" ]] && CONN_CMD="$CONN_CMD -p $PORT"
+build_ssh_cmd() {
+    local cmd="ssh -t"
+    [[ -n "$PORT" ]] && cmd="$cmd -p $PORT"
     if [[ -n "$KEY" ]]; then
-        EXPANDED_KEY=$(eval echo "$KEY")
-        CONN_CMD="$CONN_CMD -i $EXPANDED_KEY"
+        local expanded_key
+        expanded_key=$(eval echo "$KEY")
+        cmd="$cmd -i $expanded_key"
     fi
-    [[ -n "$SSH_OPTS" ]] && CONN_CMD="$CONN_CMD $SSH_OPTS"
-    CONN_CMD="$CONN_CMD ${USER}@${HOST}"
-    [[ -n "$REMOTE_CMD" ]] && CONN_CMD="$CONN_CMD '${REMOTE_CMD}'"
-    CONN_TYPE="ssh"
-fi
+    [[ -n "$SSH_OPTS" ]] && cmd="$cmd $SSH_OPTS"
+    cmd="$cmd ${USER}@${HOST}"
+    [[ -n "$REMOTE_CMD" ]] && cmd="$cmd '${REMOTE_CMD}'"
+    echo "$cmd"
+}
+
+build_et_cmd() {
+    local cmd="et"
+    [[ -n "$PORT" ]] && cmd="$cmd --port $PORT"
+    [[ -n "$REMOTE_CMD" ]] && cmd="$cmd -c \"${REMOTE_CMD}\""
+    cmd="$cmd ${USER}@${HOST}"
+    echo "$cmd"
+}
 
 PANE_ID=$(tmux split-window -h -d -P -F '#{pane_id}')
 
 # Tag pane with custom option for reliable tracking (escape sequences can't overwrite this)
 tmux set-option -p -t "$PANE_ID" @remote "${DISPLAY_NAME}"
 
-tmux send-keys -t "$PANE_ID" "$CONN_CMD" Enter
+# Try et first, fall back to ssh on failure
+HAS_ET=false
+command -v et &>/dev/null && HAS_ET=true
+
+if [[ "$HAS_ET" = true ]]; then
+    CONN_CMD=$(build_et_cmd)
+    tmux send-keys -t "$PANE_ID" "$CONN_CMD" Enter
+
+    # Wait and check for et failure
+    ET_FAILED=false
+    for i in $(seq 1 8); do
+        sleep 0.5
+        OUTPUT=$(tmux capture-pane -t "$PANE_ID" -p 2>/dev/null) || break
+        if echo "$OUTPUT" | grep -qiE "Could not reach|Connection refused|Connection timed out|No route to host|Name or service not known"; then
+            ET_FAILED=true
+            break
+        fi
+        # If we see a remote prompt, et succeeded
+        if echo "$OUTPUT" | grep -qE '[#$%>❯] *$' && [[ $i -ge 3 ]]; then
+            break
+        fi
+    done
+
+    if [[ "$ET_FAILED" = true ]]; then
+        echo "et failed, falling back to ssh..." >&2
+        # Clear the pane and send ssh command instead
+        tmux send-keys -t "$PANE_ID" C-c
+        sleep 0.2
+        CONN_CMD=$(build_ssh_cmd)
+        tmux send-keys -t "$PANE_ID" "$CONN_CMD" Enter
+        CONN_TYPE="ssh (et unavailable on remote)"
+    else
+        CONN_TYPE="et"
+    fi
+else
+    CONN_CMD=$(build_ssh_cmd)
+    tmux send-keys -t "$PANE_ID" "$CONN_CMD" Enter
+    CONN_TYPE="ssh"
+fi
+
+# Verify the connection attempt started
+sleep 1
+DEAD=$(tmux display-message -t "$PANE_ID" -p '#{pane_dead}' 2>/dev/null) || DEAD="1"
+if [[ "$DEAD" = "1" ]]; then
+    echo "Error: Connection pane died immediately. Check host reachability." >&2
+    exit 1
+fi
 
 echo "Connected to ${USER}@${HOST} in pane ${PANE_ID} (remote:${DISPLAY_NAME}) via ${CONN_TYPE}"
