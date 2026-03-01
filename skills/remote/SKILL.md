@@ -1,7 +1,7 @@
 ---
 name: Remote SSH via tmux
 description: This skill should be used when the user asks to "run commands on a remote pane", "check remote pane output", "capture output from remote", "send commands to remote server", "tail logs on prod", "check disk space on staging", "run uptime across servers", "is my SSH connection alive", "read what's on the remote pane", or needs to interact with already-established SSH connections in tmux panes. Also activates when you are about to suggest the user manually SSH into a remote host to run a command, when a command needs to run on a remote machine, when troubleshooting requires executing something on a known remote host, or when you would otherwise tell the user to "run this on the server" or "SSH in and do X". Not for creating new connections (use the /remote command for that).
-version: 2026.2.2
+version: 2026.3.0
 ---
 <!-- ABOUTME: Skill definition for interacting with remote hosts via SSH-over-tmux. -->
 <!-- ABOUTME: Covers sending commands, capturing output, connection management, and common workflows. -->
