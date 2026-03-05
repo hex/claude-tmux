@@ -259,7 +259,7 @@ If an SSH connection drops (pane still alive but shell returned to local), send 
 tmux send-keys -t %5 "ssh user@host" Enter
 ```
 
-If the pane is dead, create a new connection using the plugin's connect script. The plugin prefers Eternal Terminal (`et`) over SSH when available, which survives network changes automatically and rarely drops.
+If the pane is dead, create a new connection using the plugin's connect script. The plugin uses SSH by default. Hosts configured with `"use_et": true` in remote-hosts.json will use Eternal Terminal (`et`) instead, which survives network changes and rarely drops.
 
 Never use mosh for remote tmux pane connections — it is not designed for tunneling traffic and will cause reliability issues.
 
@@ -413,7 +413,7 @@ This pattern is especially valuable for multi-host operations where you run the 
 
 The plugin provides helper scripts for connection and host management:
 
-- **`${CLAUDE_PLUGIN_ROOT}/scripts/connect.sh`** -- Create new SSH connections in tmux panes. Prefers `et` over `ssh` when available. Supports a `command` field in host config to run a command on connect (e.g., `tmux new -A -s main` to attach to a persistent remote tmux session). Uses `et -c` or `ssh -t` accordingly.
+- **`${CLAUDE_PLUGIN_ROOT}/scripts/connect.sh`** -- Create new SSH connections in tmux panes. Uses SSH by default; hosts with `"use_et": true` in their config use Eternal Terminal instead. Supports a `command` field in host config to run a command on connect (e.g., `tmux new -A -s main` to attach to a persistent remote tmux session).
 - **`${CLAUDE_PLUGIN_ROOT}/scripts/hosts.sh`** -- Manage saved remote host configurations. Add, remove, and list known hosts.
 - **`${CLAUDE_PLUGIN_ROOT}/remote-hosts.json`** -- Persistent storage for saved host entries (hostname, user, port, identity file, and custom options).
 

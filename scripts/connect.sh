@@ -56,6 +56,7 @@ KEY=""
 SSH_OPTS=""
 REMOTE_CMD=""
 DISPLAY_NAME=""
+USE_ET=""
 
 if [[ -f "$HOSTS_FILE" ]] && jq -e --arg name "$TARGET" '.[$name]' "$HOSTS_FILE" &>/dev/null; then
     HOST=$(jq -r --arg name "$TARGET" '.[$name].host' "$HOSTS_FILE")
@@ -64,6 +65,7 @@ if [[ -f "$HOSTS_FILE" ]] && jq -e --arg name "$TARGET" '.[$name]' "$HOSTS_FILE"
     KEY=$(jq -r --arg name "$TARGET" '.[$name].key // empty' "$HOSTS_FILE")
     SSH_OPTS=$(jq -r --arg name "$TARGET" '.[$name].ssh_opts // empty' "$HOSTS_FILE")
     REMOTE_CMD=$(jq -r --arg name "$TARGET" '.[$name].command // empty' "$HOSTS_FILE")
+    USE_ET=$(jq -r --arg name "$TARGET" '.[$name].use_et // empty' "$HOSTS_FILE")
     DISPLAY_NAME="$TARGET"
 elif [[ "$TARGET" == *@* ]]; then
     USER="${TARGET%%@*}"
@@ -106,11 +108,8 @@ PANE_ID=$(tmux split-window -h -d -P -F '#{pane_id}')
 # Tag pane with custom option for reliable tracking (escape sequences can't overwrite this)
 tmux set-option -p -t "$PANE_ID" @remote "${DISPLAY_NAME}"
 
-# Try et first, fall back to ssh on failure
-HAS_ET=false
-command -v et &>/dev/null && HAS_ET=true
-
-if [[ "$HAS_ET" = true ]]; then
+# Use et only when explicitly configured for this host
+if [[ "$USE_ET" = "true" ]] && command -v et &>/dev/null; then
     CONN_CMD=$(build_et_cmd)
     tmux send-keys -t "$PANE_ID" "$CONN_CMD" Enter
 

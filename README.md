@@ -8,7 +8,7 @@ Connect to remote hosts via SSH in tmux panes. Manage saved hosts, open ad-hoc c
 - **Ad-hoc connections** -- connect to any `user@host` without saving it first
 - **Idempotent connections** -- reconnects dead panes, reuses live ones
 - **SSH config import** -- bulk-import hosts from `~/.ssh/config`
-- **Eternal Terminal support** -- prefers `et` over `ssh` when available for persistent connections
+- **Eternal Terminal support** -- opt-in `et` for hosts that benefit from persistent connections
 - **Pane health monitoring** -- check which remote panes are alive or dead
 - **Graceful disconnect** -- sends `exit` before killing panes
 
@@ -42,7 +42,7 @@ claude --plugin-dir /path/to/claude-tmux
 - [tmux](https://github.com/tmux/tmux) (3.0+)
 - [jq](https://jqlang.github.io/jq/) (for JSON host management)
 - SSH client with key-based authentication configured
-- [Eternal Terminal](https://eternalterminal.dev/) (optional) -- preferred over SSH when available
+- [Eternal Terminal](https://eternalterminal.dev/) (optional) -- used when a host has `"use_et": true`
 
 ## Usage
 
@@ -127,6 +127,7 @@ Fields:
 - `key` (optional) -- path to SSH private key
 - `ssh_opts` (optional) -- additional SSH options
 - `command` (optional) -- command to run on connect (e.g., `tmux new -A -s main`)
+- `use_et` (optional) -- set to `true` to use Eternal Terminal instead of SSH
 - `description` (optional) -- human-readable label
 
 ## Remote Pane Interaction
