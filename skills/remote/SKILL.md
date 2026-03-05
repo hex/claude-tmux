@@ -1,7 +1,7 @@
 ---
 name: Remote SSH via tmux
 description: This skill should be used when the user asks to "run commands on a remote pane", "check remote pane output", "capture output from remote", "send commands to remote server", "tail logs on prod", "check disk space on staging", "run uptime across servers", "is my SSH connection alive", "read what's on the remote pane", or needs to interact with already-established SSH connections in tmux panes. Also activates when you are about to suggest the user manually SSH into a remote host to run a command, when a command needs to run on a remote machine, when troubleshooting requires executing something on a known remote host, or when you would otherwise tell the user to "run this on the server" or "SSH in and do X". Not for creating new connections (use the /remote command for that).
-version: 2026.3.0
+version: 2026.3.1
 ---
 <!-- ABOUTME: Skill definition for interacting with remote hosts via SSH-over-tmux. -->
 <!-- ABOUTME: Covers sending commands, capturing output, connection management, and common workflows. -->
@@ -368,7 +368,7 @@ This keeps the remote shell available for other commands while the job runs in t
 
 ### Multi-Host Operations
 
-Run the same command across multiple remote panes:
+Run the same command across multiple remote panes. Use a unique marker per pane so that polling each pane's output only matches its own completion signal -- a shared marker could cause false positives if one pane's output bleeds into another's scrollback during rapid polling.
 
 ```bash
 # Collect remote pane IDs
@@ -377,17 +377,18 @@ for pane_id in $(tmux list-panes -a -F '#{pane_id}'); do
   name=$(tmux show-options -p -t "$pane_id" -v @remote 2>/dev/null) && [ -n "$name" ] && REMOTE_PANES+=("$pane_id")
 done
 
-# Send command to all with a shared marker
-MARKER="__DONE_$$_$(date +%s)__"
+# Send command to all panes with unique markers (fire all first, then poll)
+declare -A MARKERS
 for pane in "${REMOTE_PANES[@]}"; do
-  tmux send-keys -t "$pane" "uptime; echo ${MARKER}" Enter
+  MARKERS[$pane]="__DONE_${pane}_$$_$(date +%s)__"
+  tmux send-keys -t "$pane" "uptime; echo ${MARKERS[$pane]}" Enter
 done
 
-# Wait for all panes to complete, then capture
+# Poll each pane for its unique marker, then capture
 for pane in "${REMOTE_PANES[@]}"; do
-  for i in $(seq 1 20); do sleep 0.5; tmux capture-pane -t "$pane" -p -S -20 | grep -q "$MARKER" && break; done
+  for i in $(seq 1 20); do sleep 0.5; tmux capture-pane -t "$pane" -p -S -20 | grep -q "${MARKERS[$pane]}" && break; done
   echo "=== $pane ==="
-  tmux capture-pane -t "$pane" -p -S -5
+  tmux capture-pane -t "$pane" -p -S -20
 done
 ```
 
