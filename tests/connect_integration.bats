@@ -17,7 +17,7 @@ setup() {
     echo "ok" > "$STUB_MODE_FILE"
     cat > "${STUB_BIN}/ssh" <<STUB
 #!/usr/bin/env bash
-echo "STUB-SSH-ARGS: \$*"
+for a in "\$@"; do echo "STUB-ARG:[\$a]"; done
 if [[ "\$(cat "$STUB_MODE_FILE" 2>/dev/null)" == "refused" ]]; then
     echo "ssh: connect to host failed: Connection refused"
     exit 255
@@ -155,6 +155,41 @@ HOSTS
     pane=$(find_tagged_pane "sneaky")
     typed=$(tmux -L "$SOCKET" capture-pane -t "$pane" -p -S -)
     [[ "$typed" == *"${HOME}/.ssh/key"* ]]
+}
+
+@test "connect: host command runs as a single argument, not split or re-parsed" {
+    cat > "$TEST_HOSTS_FILE" <<'HOSTS'
+{
+  "withcmd": {
+    "host": "203.0.113.11",
+    "user": "admin",
+    "command": "tmux new -A -s main"
+  }
+}
+HOSTS
+    run_connect "withcmd"
+    [ "$CONNECT_STATUS" -eq 0 ]
+
+    pane=$(find_tagged_pane "withcmd")
+    typed=$(tmux -L "$SOCKET" capture-pane -t "$pane" -p -S -)
+    # ssh must receive the whole command as one argument
+    [[ "$typed" == *"STUB-ARG:[tmux new -A -s main]"* ]]
+}
+
+@test "connect: host command with an embedded single quote cannot break out" {
+    cat > "$TEST_HOSTS_FILE" <<HOSTS
+{
+  "cmdevil": {
+    "host": "203.0.113.12",
+    "user": "admin",
+    "command": "true'\$(touch ${TEST_TMP_DIR}/cmdpwned)'"
+  }
+}
+HOSTS
+    run_connect "cmdevil"
+    [ "$CONNECT_STATUS" -eq 0 ]
+
+    [ ! -f "${TEST_TMP_DIR}/cmdpwned" ]
 }
 
 @test "connect: key path with an embedded single quote cannot break out" {

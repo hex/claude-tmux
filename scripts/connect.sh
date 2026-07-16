@@ -95,14 +95,16 @@ build_ssh_cmd() {
     fi
     [[ -n "$SSH_OPTS" ]] && cmd="$cmd $SSH_OPTS"
     cmd="$cmd ${USER}@${HOST}"
-    [[ -n "$REMOTE_CMD" ]] && cmd="$cmd '${REMOTE_CMD}'"
+    # %q escapes the remote command to a single literal token so the pane
+    # shell passes it to ssh verbatim without re-parsing quotes or $(...)
+    [[ -n "$REMOTE_CMD" ]] && cmd="$cmd $(printf '%q' "$REMOTE_CMD")"
     echo "$cmd"
 }
 
 build_et_cmd() {
     local cmd="et"
     [[ -n "$PORT" ]] && cmd="$cmd --port $PORT"
-    [[ -n "$REMOTE_CMD" ]] && cmd="$cmd -c \"${REMOTE_CMD}\""
+    [[ -n "$REMOTE_CMD" ]] && cmd="$cmd -c $(printf '%q' "$REMOTE_CMD")"
     cmd="$cmd ${USER}@${HOST}"
     echo "$cmd"
 }
