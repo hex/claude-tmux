@@ -104,6 +104,25 @@ build_et_cmd() {
     echo "$cmd"
 }
 
+# Poll pane output for connection errors; returns 0 if a failure is seen.
+# Exits early once a shell prompt appears (connection established or the
+# local shell returned alongside an error line, which the pattern catches).
+connection_failed() {
+    local pane="$1"
+    local output
+    for i in $(seq 1 8); do
+        sleep 0.5
+        output=$(tmux capture-pane -t "$pane" -p 2>/dev/null) || return 0
+        if echo "$output" | grep -qiE "Could not reach|Connection refused|Connection timed out|No route to host|Name or service not known|nodename nor servname|Permission denied|Connection closed by"; then
+            return 0
+        fi
+        if echo "$output" | grep -qE '[#$%>❯] *$' && [[ $i -ge 3 ]]; then
+            return 1
+        fi
+    done
+    return 1
+}
+
 PANE_ID=$(tmux split-window -h -d -P -F '#{pane_id}')
 
 # Tag pane with custom option for reliable tracking (escape sequences can't overwrite this)
@@ -114,22 +133,7 @@ if [[ "$USE_ET" = "true" ]] && command -v et &>/dev/null; then
     CONN_CMD=$(build_et_cmd)
     tmux send-keys -t "$PANE_ID" "$CONN_CMD" Enter
 
-    # Wait and check for et failure
-    ET_FAILED=false
-    for i in $(seq 1 8); do
-        sleep 0.5
-        OUTPUT=$(tmux capture-pane -t "$PANE_ID" -p 2>/dev/null) || break
-        if echo "$OUTPUT" | grep -qiE "Could not reach|Connection refused|Connection timed out|No route to host|Name or service not known"; then
-            ET_FAILED=true
-            break
-        fi
-        # If we see a remote prompt, et succeeded
-        if echo "$OUTPUT" | grep -qE '[#$%>❯] *$' && [[ $i -ge 3 ]]; then
-            break
-        fi
-    done
-
-    if [[ "$ET_FAILED" = true ]]; then
+    if connection_failed "$PANE_ID"; then
         echo "et failed, falling back to ssh..." >&2
         # Clear the pane and send ssh command instead
         tmux send-keys -t "$PANE_ID" C-c
@@ -146,8 +150,15 @@ else
     CONN_TYPE="ssh"
 fi
 
-# Verify the connection attempt started
-sleep 1
+# Verify the connection did not fail outright
+if connection_failed "$PANE_ID"; then
+    ERROR_LINES=$(tmux capture-pane -t "$PANE_ID" -p 2>/dev/null | grep -v '^$' | tail -3) || ERROR_LINES=""
+    tmux kill-pane -t "$PANE_ID" 2>/dev/null || true
+    echo "Error: Connection to ${USER}@${HOST} failed:" >&2
+    [[ -n "$ERROR_LINES" ]] && echo "$ERROR_LINES" >&2
+    exit 1
+fi
+
 DEAD=$(tmux display-message -t "$PANE_ID" -p '#{pane_dead}' 2>/dev/null) || DEAD="1"
 if [[ "$DEAD" = "1" ]]; then
     echo "Error: Connection pane died immediately. Check host reachability." >&2
