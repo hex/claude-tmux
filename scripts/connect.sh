@@ -128,7 +128,14 @@ connection_failed() {
     return 1
 }
 
-PANE_ID=$(tmux split-window -h -d -P -F '#{pane_id}')
+# Split from the calling pane so the new pane opens in the caller's window.
+# Without this, tmux splits the session's active window, which under iTerm2's
+# tmux control mode is a different tab than the one the caller is in.
+if [[ -n "${TMUX_PANE:-}" ]]; then
+    PANE_ID=$(tmux split-window -h -d -P -F '#{pane_id}' -t "$TMUX_PANE")
+else
+    PANE_ID=$(tmux split-window -h -d -P -F '#{pane_id}')
+fi
 
 # Tag pane with custom option for reliable tracking (escape sequences can't overwrite this)
 tmux set-option -p -t "$PANE_ID" @remote "${DISPLAY_NAME}"

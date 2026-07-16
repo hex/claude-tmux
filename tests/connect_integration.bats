@@ -118,6 +118,29 @@ find_tagged_pane() {
     [ "$count" -eq 1 ]
 }
 
+@test "connect: opens the pane in the caller's window, not the active one" {
+    create_sample_hosts
+
+    # Caller lives in window 0; a second window becomes the active one.
+    caller=$(tmux -L "$SOCKET" list-panes -t it:0 -F '#{pane_id}' | head -1)
+    caller_win=$(tmux -L "$SOCKET" display-message -p -t "$caller" '#{window_id}')
+    tmux -L "$SOCKET" new-window -d -t it:
+    tmux -L "$SOCKET" select-window -t it:1
+
+    # Send the connect command from the caller pane so it inherits TMUX_PANE
+    exit_file="${TEST_TMP_DIR}/connect_exit"
+    rm -f "$exit_file"
+    tmux -L "$SOCKET" send-keys -t "$caller" \
+        "bash ${SCRIPTS_DIR}/connect.sh ${TEST_HOSTS_FILE} staging >/dev/null 2>&1; echo \$? > ${exit_file}" Enter
+    for _ in $(seq 1 80); do [ -f "$exit_file" ] && break; sleep 0.25; done
+    [ "$(cat "$exit_file")" -eq 0 ]
+
+    pane=$(find_tagged_pane "staging")
+    [ -n "$pane" ]
+    pane_win=$(tmux -L "$SOCKET" display-message -p -t "$pane" '#{window_id}')
+    [ "$pane_win" = "$caller_win" ]
+}
+
 @test "connect: unknown bare name fails with error" {
     run_connect "no-such-host"
     [ "$CONNECT_STATUS" -eq 1 ]
