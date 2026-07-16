@@ -7,8 +7,17 @@ remote-hosts.json
 # Claude sessions tooling
 .cs/
 
+# Skill-benchmark artifacts (skill-creator eval harness output)
+evals/
+remote-workspace/
+
 # OS and editor
 .DS_Store
 *.swp
 *.swo
 *~
+.cs/local/
+.cs/archives/
+.cs/.narrative-reminder-cooldown
+.claude/settings.local.json
+.obsidian/
