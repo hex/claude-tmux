@@ -194,6 +194,28 @@ setup() {
     assert_json_eq "$json" '.["dev-box"].host' "other.com"
 }
 
+@test "hosts import-ssh: splits multi-name Host lines into separate entries" {
+    cat > "${TEST_TMP_DIR}/multi_config" <<'SSHCFG'
+Host web1 web2 *.internal
+    HostName lb.example.com
+    User deploy
+SSHCFG
+    run bash "$SCRIPTS_DIR/hosts.sh" "$TEST_HOSTS_FILE" import-ssh "${TEST_TMP_DIR}/multi_config"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Imported 2"* ]]
+
+    local json
+    json=$(cat "$TEST_HOSTS_FILE")
+    assert_json_eq "$json" '.["web1"].host' "lb.example.com"
+    assert_json_eq "$json" '.["web2"].host' "lb.example.com"
+    # Wildcard alias on the same line must be skipped
+    run jq -e '.["*.internal"]' "$TEST_HOSTS_FILE"
+    [ "$status" -ne 0 ]
+    # No entry named after the whole line
+    run jq -e '.["web1 web2 *.internal"]' "$TEST_HOSTS_FILE"
+    [ "$status" -ne 0 ]
+}
+
 @test "hosts import-ssh: imports Port when present" {
     create_ssh_config
     bash "$SCRIPTS_DIR/hosts.sh" "$TEST_HOSTS_FILE" import-ssh "${TEST_TMP_DIR}/ssh_config"

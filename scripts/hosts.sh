@@ -130,30 +130,34 @@ case "$SUBCOMMAND" in
             if [[ -z "$CURRENT_HOST" || -z "$CURRENT_HOSTNAME" ]]; then
                 return
             fi
-            # Skip wildcard patterns
-            if [[ "$CURRENT_HOST" == *"*"* || "$CURRENT_HOST" == *"?"* ]]; then
-                return
-            fi
-            # Skip if already exists
-            if jq -e --arg name "$CURRENT_HOST" '.[$name]' "$HOSTS_FILE" &>/dev/null; then
-                echo "  skip: $CURRENT_HOST (already exists)"
-                SKIPPED=$((SKIPPED + 1))
-                return
-            fi
-            # Build the JSON entry
-            local entry
-            entry=$(jq -n \
-                --arg host "$CURRENT_HOSTNAME" \
-                --arg user "${CURRENT_USER:-$(whoami)}" \
-                --arg key "$CURRENT_KEY" \
-                --arg port "$CURRENT_PORT" \
-                '{host: $host, user: $user}
-                 + (if $key != "" then {key: $key} else {} end)
-                 + (if $port != "" then {port: ($port | tonumber)} else {} end)')
-            jq --arg name "$CURRENT_HOST" --argjson entry "$entry" \
-                '.[$name] = $entry' "$HOSTS_FILE" > "${HOSTS_FILE}.tmp" && mv "${HOSTS_FILE}.tmp" "$HOSTS_FILE"
-            echo "  added: $CURRENT_HOST (${CURRENT_USER:-$(whoami)}@${CURRENT_HOSTNAME})"
-            IMPORTED=$((IMPORTED + 1))
+            # A Host line can list several names; import each one
+            local name
+            for name in $CURRENT_HOST; do
+                # Skip wildcard patterns
+                if [[ "$name" == *"*"* || "$name" == *"?"* ]]; then
+                    continue
+                fi
+                # Skip if already exists
+                if jq -e --arg name "$name" '.[$name]' "$HOSTS_FILE" &>/dev/null; then
+                    echo "  skip: $name (already exists)"
+                    SKIPPED=$((SKIPPED + 1))
+                    continue
+                fi
+                # Build the JSON entry
+                local entry
+                entry=$(jq -n \
+                    --arg host "$CURRENT_HOSTNAME" \
+                    --arg user "${CURRENT_USER:-$(whoami)}" \
+                    --arg key "$CURRENT_KEY" \
+                    --arg port "$CURRENT_PORT" \
+                    '{host: $host, user: $user}
+                     + (if $key != "" then {key: $key} else {} end)
+                     + (if $port != "" then {port: ($port | tonumber)} else {} end)')
+                jq --arg name "$name" --argjson entry "$entry" \
+                    '.[$name] = $entry' "$HOSTS_FILE" > "${HOSTS_FILE}.tmp" && mv "${HOSTS_FILE}.tmp" "$HOSTS_FILE"
+                echo "  added: $name (${CURRENT_USER:-$(whoami)}@${CURRENT_HOSTNAME})"
+                IMPORTED=$((IMPORTED + 1))
+            done
         }
 
         while IFS= read -r line || [[ -n "$line" ]]; do
