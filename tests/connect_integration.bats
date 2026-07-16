@@ -154,5 +154,23 @@ HOSTS
 
     pane=$(find_tagged_pane "sneaky")
     typed=$(tmux -L "$SOCKET" capture-pane -t "$pane" -p -S -)
-    [[ "$typed" == *"-i '${HOME}/.ssh/key"* ]]
+    [[ "$typed" == *"${HOME}/.ssh/key"* ]]
+}
+
+@test "connect: key path with an embedded single quote cannot break out" {
+    # A literal single quote in the key must not let the following
+    # command substitution escape and execute in the pane shell.
+    cat > "$TEST_HOSTS_FILE" <<HOSTS
+{
+  "evil": {
+    "host": "203.0.113.10",
+    "user": "admin",
+    "key": "~/.ssh/key'\$(touch ${TEST_TMP_DIR}/pwned)'"
+  }
+}
+HOSTS
+    run_connect "evil"
+    [ "$CONNECT_STATUS" -eq 0 ]
+
+    [ ! -f "${TEST_TMP_DIR}/pwned" ]
 }

@@ -86,10 +86,12 @@ build_ssh_cmd() {
     local cmd="ssh -t"
     [[ -n "$PORT" ]] && cmd="$cmd -p $PORT"
     if [[ -n "$KEY" ]]; then
-        # Single-quote the path: the command is typed into a shell via
-        # send-keys, so an unquoted path would get expanded a second time
-        local expanded_key="${KEY/#\~/$HOME}"
-        cmd="$cmd -i '${expanded_key}'"
+        # The command is typed into a shell via send-keys, so the path is
+        # evaluated a second time there. printf %q escapes it to a single
+        # literal token, safe against quotes and command substitution.
+        local expanded_key
+        expanded_key=$(printf '%q' "${KEY/#\~/$HOME}")
+        cmd="$cmd -i $expanded_key"
     fi
     [[ -n "$SSH_OPTS" ]] && cmd="$cmd $SSH_OPTS"
     cmd="$cmd ${USER}@${HOST}"
