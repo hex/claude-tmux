@@ -175,6 +175,9 @@ bats tests/
 claude-tmux/
 ├── .claude-plugin/
 │   └── plugin.json
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── commands/
 │   └── remote.md
 ├── skills/
@@ -187,6 +190,7 @@ claude-tmux/
 ├── tests/
 │   ├── close.bats
 │   ├── connect.bats
+│   ├── connect_integration.bats
 │   ├── hosts.bats
 │   ├── run_tests.sh
 │   └── test_helper.bash
