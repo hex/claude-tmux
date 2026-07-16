@@ -1,7 +1,7 @@
 ---
 description: Connect to remote hosts via SSH in tmux panes
-argument-hint: <name|user@host|list|add|close|import-ssh|status>
-allowed-tools: Bash(bash:*), Bash(tmux:*), AskUserQuestion
+argument-hint: <name|user@host|list|add|remove|close|import-ssh|status>
+allowed-tools: Bash(bash:*), Bash(tmux:*), Bash(jq:*), AskUserQuestion
 ---
 
 ## Context
@@ -54,6 +54,16 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/hosts.sh ${CLAUDE_PLUGIN_ROOT}/remote-hosts.j
 ```
 Confirm the host was added.
 
+### If first argument is `remove`:
+
+Remove a saved host by name. Extract `<name>` from the remaining arguments.
+
+Run:
+```
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/hosts.sh ${CLAUDE_PLUGIN_ROOT}/remote-hosts.json remove <name>
+```
+Confirm the host was removed. If the script reports the host was not found, say so and suggest `/remote list`. Removing a saved host does not close an active pane for it -- use `/remote close <name>` for that.
+
 ### If first argument is `close`:
 
 Close a remote pane by name. Extract `<name>` from the remaining arguments.
@@ -79,9 +89,9 @@ Show active remote panes to the user. If none are found, say so. Flag any dead p
 
 Treat the argument as a saved host name or a `user@host` target.
 
-**Before connecting**, check if the argument is an exact match or user@host format. If it is neither, search for partial matches among saved host names:
+**Before connecting**, check if the argument is an exact match or user@host format. If it is neither, search for partial matches among saved host names (the `[ -f ]` guard avoids an error when no hosts have been saved yet and the file does not exist):
 ```
-jq -r 'keys[]' ${CLAUDE_PLUGIN_ROOT}/remote-hosts.json | grep -i "<argument>"
+[ -f ${CLAUDE_PLUGIN_ROOT}/remote-hosts.json ] && jq -r 'keys[]' ${CLAUDE_PLUGIN_ROOT}/remote-hosts.json | grep -i "<argument>"
 ```
 
 - If **one** match is found, use it as the target.

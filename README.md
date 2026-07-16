@@ -80,13 +80,21 @@ Idempotent -- if already connected to that host, reports the existing pane inste
 /remote add staging deploy@staging.example.com
 ```
 
+### Remove a saved host
+
+```
+/remote remove staging
+```
+
+Deletes the host from `remote-hosts.json`. Does not close an active pane for it.
+
 ### Import from SSH config
 
 ```
 /remote import-ssh
 ```
 
-Parses `~/.ssh/config` and adds any hosts not already in `remote-hosts.json`.
+Parses `~/.ssh/config` and adds any hosts not already in `remote-hosts.json`. Imports `HostName`, `User`, `IdentityFile`, and `Port`; multi-name `Host` lines and wildcard aliases are handled (each concrete name imported, wildcards skipped).
 
 ### Close a remote pane
 
