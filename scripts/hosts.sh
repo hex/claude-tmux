@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # ABOUTME: Manages saved remote host entries in a JSON configuration file.
 # ABOUTME: Supports listing, adding, removing, and querying host definitions.
 set -euo pipefail

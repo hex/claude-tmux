@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # ABOUTME: Opens a tmux pane with an SSH connection to a remote host.
 # ABOUTME: Reads host config from remote-hosts.json or accepts ad-hoc user@host.
 set -euo pipefail

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # ABOUTME: Closes a remote tmux pane by its @remote tag name.
 # ABOUTME: Sends exit before killing the pane for a graceful disconnect.
 set -euo pipefail
