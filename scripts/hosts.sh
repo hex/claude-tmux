@@ -124,6 +124,7 @@ case "$SUBCOMMAND" in
         CURRENT_HOSTNAME=""
         CURRENT_USER=""
         CURRENT_KEY=""
+        CURRENT_PORT=""
 
         flush_host() {
             if [[ -z "$CURRENT_HOST" || -z "$CURRENT_HOSTNAME" ]]; then
@@ -145,7 +146,10 @@ case "$SUBCOMMAND" in
                 --arg host "$CURRENT_HOSTNAME" \
                 --arg user "${CURRENT_USER:-$(whoami)}" \
                 --arg key "$CURRENT_KEY" \
-                '{host: $host, user: $user} + (if $key != "" then {key: $key} else {} end)')
+                --arg port "$CURRENT_PORT" \
+                '{host: $host, user: $user}
+                 + (if $key != "" then {key: $key} else {} end)
+                 + (if $port != "" then {port: ($port | tonumber)} else {} end)')
             jq --arg name "$CURRENT_HOST" --argjson entry "$entry" \
                 '.[$name] = $entry' "$HOSTS_FILE" > "${HOSTS_FILE}.tmp" && mv "${HOSTS_FILE}.tmp" "$HOSTS_FILE"
             echo "  added: $CURRENT_HOST (${CURRENT_USER:-$(whoami)}@${CURRENT_HOSTNAME})"
@@ -164,12 +168,15 @@ case "$SUBCOMMAND" in
                 CURRENT_HOSTNAME=""
                 CURRENT_USER=""
                 CURRENT_KEY=""
+                CURRENT_PORT=""
             elif [[ "$trimmed" =~ ^HostName[[:space:]]+(.+)$ ]]; then
                 CURRENT_HOSTNAME="${BASH_REMATCH[1]}"
             elif [[ "$trimmed" =~ ^User[[:space:]]+(.+)$ ]]; then
                 CURRENT_USER="${BASH_REMATCH[1]}"
             elif [[ "$trimmed" =~ ^IdentityFile[[:space:]]+(.+)$ ]]; then
                 CURRENT_KEY="${BASH_REMATCH[1]}"
+            elif [[ "$trimmed" =~ ^Port[[:space:]]+([0-9]+)$ ]]; then
+                CURRENT_PORT="${BASH_REMATCH[1]}"
             fi
         done < "$SSH_CONFIG"
         flush_host

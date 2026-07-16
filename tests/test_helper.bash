@@ -52,6 +52,7 @@ Host *.example.com
 Host ci-runner
     HostName ci.internal.net
     User ci
+    Port 2200
 SSHCFG
 }
 

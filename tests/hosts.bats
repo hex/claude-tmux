@@ -194,6 +194,18 @@ setup() {
     assert_json_eq "$json" '.["dev-box"].host' "other.com"
 }
 
+@test "hosts import-ssh: imports Port when present" {
+    create_ssh_config
+    bash "$SCRIPTS_DIR/hosts.sh" "$TEST_HOSTS_FILE" import-ssh "${TEST_TMP_DIR}/ssh_config"
+
+    local json
+    json=$(cat "$TEST_HOSTS_FILE")
+    assert_json_eq "$json" '.["ci-runner"].port' "2200"
+    # Hosts without a Port directive must not get one
+    run jq -e '.["dev-box"].port' "$TEST_HOSTS_FILE"
+    [ "$status" -ne 0 ]
+}
+
 @test "hosts import-ssh: imports SSH key when present" {
     create_ssh_config
     bash "$SCRIPTS_DIR/hosts.sh" "$TEST_HOSTS_FILE" import-ssh "${TEST_TMP_DIR}/ssh_config"
