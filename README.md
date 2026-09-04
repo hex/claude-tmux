@@ -11,6 +11,7 @@ Connect to remote hosts via SSH in tmux panes. Manage saved hosts, open ad-hoc c
 - **Eternal Terminal support** -- opt-in `et` for hosts that benefit from persistent connections
 - **Pane health monitoring** -- check which remote panes are alive or dead
 - **Graceful disconnect** -- sends `exit` before killing panes
+- **Remote test runs** -- sync a repo to a saved host and run its suite there, detached
 
 ## Installation
 
@@ -157,6 +158,36 @@ done
 
 The **Remote SSH via tmux** skill activates automatically when working with established remote connections, providing detailed patterns for sending commands, capturing output, and managing sessions.
 
+## Remote Test Runs
+
+A suite that takes minutes locally competes with everything else on the machine.
+`remote-tests.sh` copies the repo to a saved host, starts the suite there
+detached, and hands back the commands to follow it:
+
+```bash
+# From inside the repo, using a host saved by /remote
+bash scripts/remote-tests.sh --host mac-mini
+
+# Or a literal target, with the commands printed and nothing run
+bash scripts/remote-tests.sh --host user@box --print
+```
+
+The runner is detected (`tests/run_tests.sh`, then `tests/run_all.sh`) unless
+`--cmd` overrides it. A host name without an `@` is resolved from the same store
+`/remote` maintains, and its saved `key` and `ssh_opts` are passed to both ssh
+and rsync -- rsync tunnels over its own ssh, so omitting them there fails while
+a plain ssh to the same host succeeds.
+
+`.cs/` is excluded by default; `.git` is kept, because suites that shell out to
+git fail confusingly without it. The verdict is the exit code left in
+`suite.status`, not a count of TAP lines -- a runner that prints its own summary
+yields zero of those whether it passed or failed.
+
+The **Remote test runs** skill activates when a full suite is about to run and
+would take minutes, or when asked to run tests on another machine. It stays out
+of the way for a single file or a `--changed` run, where syncing costs more than
+it saves.
+
 ## Development
 
 ### Testing
@@ -181,17 +212,21 @@ claude-tmux/
 ├── commands/
 │   └── remote.md
 ├── skills/
-│   └── remote/
+│   ├── remote/
+│   │   └── SKILL.md
+│   └── remote-tests/
 │       └── SKILL.md
 ├── scripts/
 │   ├── close.sh
 │   ├── connect.sh
-│   └── hosts.sh
+│   ├── hosts.sh
+│   └── remote-tests.sh
 ├── tests/
 │   ├── close.bats
 │   ├── connect.bats
 │   ├── connect_integration.bats
 │   ├── hosts.bats
+│   ├── remote-tests.bats
 │   ├── run_tests.sh
 │   └── test_helper.bash
 ├── LICENSE
