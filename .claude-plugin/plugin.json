@@ -1,6 +1,6 @@
 {
   "name": "claude-tmux",
-  "description": "Connect to remote hosts via SSH in tmux panes with saved host management",
+  "description": "Connect to remote hosts via SSH in tmux panes with saved host management, and run a repo's test suite on one of them",
   "version": "2026.7.1",
   "author": {
     "name": "hex",
@@ -11,6 +11,7 @@
     "tmux",
     "remote",
     "pane",
-    "terminal"
+    "terminal",
+    "tests"
   ]
 }
