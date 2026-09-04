@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project uses calendar
 versioning (`YYYY.M.BUILD`).
 
+## 2026.9.1
+
+### Features
+- Run a repo's test suite on a remote host over ssh, detached, so a long suite stops competing with the local machine. `scripts/remote-tests.sh --host mac-mini` from inside the repo.
+- Detect the runner (`tests/run_tests.sh`, then `tests/run_all.sh`) unless `--cmd` overrides it; stop and name what it looked for when neither exists.
+- Resolve a `--host` without an `@` from the same store `/remote` maintains, and pass its saved `key` and `ssh_opts` to both ssh and rsync. rsync tunnels over its own ssh, so passing them to ssh alone leaves rsync failing against a host that ssh reaches.
+- Report the suite's exit code in `suite.status` rather than counting `not ok` lines. A runner that prints its own summary yields zero of those whether it passed or failed.
+
+### Docs
+- Document remote test runs in the README, and add the `remote-tests` skill covering when to reach for it and when a local run is still cheaper.
+
+### Other
+- Exclude `.cs/` from the sync by default and keep `.git`: suites that shell out to git fail confusingly without it. Test count grew from 41 to 52.
+
 ## 2026.7.1
 
 ### Features

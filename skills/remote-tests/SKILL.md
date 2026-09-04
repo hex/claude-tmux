@@ -1,7 +1,7 @@
 ---
 name: Remote test runs
 description: This skill should be used when a full test suite is about to run and would take minutes rather than seconds, when the user asks to "run the tests on another machine", "run the suite remotely", "run tests on the mac studio", or when a local suite has already slowed or frozen the machine. Runs a repo's suite on a saved remote host over ssh, detached, and reports the exit code. Not for a single test file or a --changed run, where the sync costs more than it saves.
-version: 2026.7.1
+version: 2026.9.1
 ---
 <!-- ABOUTME: Runs a repository's test suite on a remote host instead of locally. -->
 
